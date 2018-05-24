@@ -188,6 +188,59 @@ static void sighandler(int signum) {
 }
 #endif
 
+// level 0: do not report (don't call this), 1: report successful devices, 2: report active devices, 3: report all
+static data_t *create_report_data(struct dm_state *demod, int level)
+{
+    data_t *data;
+    data_t *dev_data[MAX_PROTOCOLS];
+    struct protocol_state *p;
+    int r, i = 0;
+
+    for (r = 0; r < demod->r_dev_num; r++) {
+        p = demod->r_devs[r];
+        if (level <= 2 && p->decode_events == 0)
+            continue;
+        if (level <= 1 && p->decode_ok == 0)
+            continue;
+        if (level <= 0)
+            continue;
+        dev_data[i++] = data_make(
+                "device", "", DATA_INT, r,
+                "name", "", DATA_STRING, p->name,
+                "events", "", DATA_INT, p->decode_events,
+                "ok", "", DATA_INT, p->decode_ok,
+                "messages", "", DATA_INT, p->decode_messages,
+                "fails_other", "", DATA_INT, p->decode_fails[0],
+                "fails_length", "", DATA_INT, p->decode_fails[1],
+                "fails_early", "", DATA_INT, p->decode_fails[2],
+                "fails_mic", "", DATA_INT, p->decode_fails[3],
+                "fails_sanity", "", DATA_INT, p->decode_fails[4],
+                NULL);
+    }
+
+    return data_make(
+            "enabled", "", DATA_INT, demod->r_dev_num,
+            "stats", "", DATA_ARRAY, data_array(i, DATA_DATA, dev_data),
+            NULL);
+}
+
+static void flush_report_data(struct dm_state *demod)
+{
+    int i;
+    struct protocol_state *p;
+
+    for (i = 0; i < demod->r_dev_num; i++) {
+        p = demod->r_devs[i];
+        p->decode_events = 0;
+        p->decode_ok = 0;
+        p->decode_messages = 0;
+        p->decode_fails[0] = 0;
+        p->decode_fails[1] = 0;
+        p->decode_fails[2] = 0;
+        p->decode_fails[3] = 0;
+        p->decode_fails[4] = 0;
+    }
+}
 
 static void register_protocol(struct dm_state *demod, r_device *t_dev) {
     struct protocol_state *p = calloc(1, sizeof (struct protocol_state));
@@ -1008,6 +1061,7 @@ int main(int argc, char **argv) {
     int have_opt_R = 0;
     int register_all = 0;
     r_device *flex_device = NULL;
+    int report_level = 0;
 
     setbuf(stdout, NULL);
     setbuf(stderr, NULL);
@@ -1029,7 +1083,7 @@ int main(int argc, char **argv) {
     demod->level_limit = DEFAULT_LEVEL_LIMIT;
     demod->hop_time = DEFAULT_HOP_TIME;
 
-    while ((opt = getopt(argc, argv, "x:z:p:DtaAI:qm:r:l:d:f:H:g:s:b:n:SR:X:F:C:T:UWGy:E")) != -1) {
+    while ((opt = getopt(argc, argv, "x:z:p:DtaAI:qm:r:l:d:f:H:g:s:b:n:SR:X:F:C:T:UWGy:EL:")) != -1) {
         switch (opt) {
             case 'd':
                 dev_query = optarg;
@@ -1172,6 +1226,9 @@ int main(int argc, char **argv) {
                 break;
             case 'E':
                 stop_after_successful_events_flag = 1;
+                break;
+            case 'L':
+                report_level = atoi(optarg);
                 break;
             default:
                 usage(devices);
@@ -1504,6 +1561,11 @@ int main(int argc, char **argv) {
 
     if (demod->out_file && (demod->out_file != stdout))
         fclose(demod->out_file);
+
+    if (report_level > 0) {
+        data_acquired_handler(create_report_data(demod, report_level));
+        flush_report_data(demod);
+    }
 
     for (i = 0; i < demod->r_dev_num; i++)
         free(demod->r_devs[i]);

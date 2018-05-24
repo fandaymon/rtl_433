@@ -62,6 +62,13 @@
 #define	FSK_PULSE_PWM_RAW		17			// FSK, Pulse Width Modulation. Short pulses = 1, Long = 0
 #define FSK_PULSE_MANCHESTER_ZEROBIT 18		// FSK, Manchester encoding
 
+/* Decoder results / statistics */
+#define DECODE_FAIL_OTHER 0
+#define DECODE_FAIL_LENGTH -1
+#define DECODE_FAIL_EARLY -2
+#define DECODE_FAIL_MIC -3
+#define DECODE_FAIL_SANITY -4
+
 extern int debug_output;
 extern float sample_file_pos;
 
@@ -82,6 +89,12 @@ struct protocol_state {
     float tolerance;
     char *name;
     unsigned demod_arg;
+
+    /* Decoder results / statistics */
+    unsigned decode_events;
+    unsigned decode_ok;
+    unsigned decode_messages;
+    unsigned decode_fails[5];
 };
 
 void data_acquired_handler(data_t *data);
