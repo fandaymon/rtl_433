@@ -53,6 +53,10 @@ int debug_output = 0;
 int quiet_mode = 0;
 int utc_mode = 0;
 int overwrite_mode = 0;
+int report_level = 0;
+int report_interval = 60; // seconds
+int report_now = 0;
+time_t report_time;
 
 typedef enum  {
     CONVERT_NATIVE,
@@ -163,6 +167,11 @@ void usage(r_device *devices) {
     exit(1);
 }
 
+// TODO: SIGINFO is not in POSIX...
+#ifndef SIGINFO
+#define SIGINFO 29
+#endif
+
 #ifdef _WIN32
 BOOL WINAPI
 sighandler(int signum) {
@@ -177,7 +186,10 @@ sighandler(int signum) {
 #else
 static void sighandler(int signum) {
     if (signum == SIGPIPE) {
-        signal(SIGPIPE,SIG_IGN);
+        signal(SIGPIPE, SIG_IGN);
+    } else if (signum == SIGINFO/* TODO: maybe SIGUSR1 */) {
+        report_now++;
+        return;
     } else if (signum == SIGALRM) {
         fprintf(stderr, "Async read stalled, exiting!\n");
     } else {
@@ -910,6 +922,13 @@ static void rtlsdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx) {
         rtlsdr_cancel_async(dev);
         fprintf(stderr, "Time expired, exiting!\n");
     }
+    if (report_now || (report_interval && rawtime >= report_time)) {
+        data_acquired_handler(create_report_data(demod, report_level));
+        flush_report_data(demod);
+        report_time += report_interval;
+        if (report_now)
+            report_now--;
+    }
 }
 
 // find the fields output for CSV
@@ -1061,7 +1080,6 @@ int main(int argc, char **argv) {
     int have_opt_R = 0;
     int register_all = 0;
     r_device *flex_device = NULL;
-    int report_level = 0;
 
     setbuf(stdout, NULL);
     setbuf(stderr, NULL);
@@ -1228,7 +1246,10 @@ int main(int argc, char **argv) {
                 stop_after_successful_events_flag = 1;
                 break;
             case 'L':
+                // there also should be options to set report_interval and wether to flush on report
                 report_level = atoi(optarg);
+                time(&report_time);
+                report_time += report_interval;
                 break;
             default:
                 usage(devices);
@@ -1343,6 +1364,7 @@ int main(int argc, char **argv) {
     sigaction(SIGTERM, &sigact, NULL);
     sigaction(SIGQUIT, &sigact, NULL);
     sigaction(SIGPIPE, &sigact, NULL);
+    sigaction(SIGINFO, &sigact, NULL);
 #else
     SetConsoleCtrlHandler((PHANDLER_ROUTINE) sighandler, TRUE);
 #endif
