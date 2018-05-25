@@ -37,7 +37,7 @@ static int bresser_3ch_callback(bitbuffer_t *bitbuffer) {
 
     int r = bitbuffer_find_repeated_row(bitbuffer, 3, 40);
     if (r < 0 || bitbuffer->bits_per_row[r] > 42) {
-        return DECODE_FAIL_LENGTH;
+        return DECODE_ABORT_LENGTH;
     }
 
     b = bitbuffer->bb[r];

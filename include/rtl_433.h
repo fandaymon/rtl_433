@@ -62,10 +62,12 @@
 #define	FSK_PULSE_PWM_RAW		17			// FSK, Pulse Width Modulation. Short pulses = 1, Long = 0
 #define FSK_PULSE_MANCHESTER_ZEROBIT 18		// FSK, Manchester encoding
 
-/* Decoder results / statistics */
-#define DECODE_FAIL_OTHER 0
-#define DECODE_FAIL_LENGTH -1
-#define DECODE_FAIL_EARLY -2
+/* Decoders should return n>=0 for n packets successfully decoded, */
+/* an ABORT code if the bitbuffer is no applicable, */
+/* or a FAIL code if the message is malformed. */
+#define DECODE_FAIL_OTHER 0 /* legacy, do not use */
+#define DECODE_ABORT_LENGTH -1
+#define DECODE_ABORT_EARLY -2
 #define DECODE_FAIL_MIC -3
 #define DECODE_FAIL_SANITY -4
 

@@ -217,22 +217,22 @@ static data_t *create_report_data(struct dm_state *demod, int level)
         if (level <= 0)
             continue;
         dev_data[i++] = data_make(
-                "device", "", DATA_INT, r,
-                "name", "", DATA_STRING, p->name,
-                "events", "", DATA_INT, p->decode_events,
-                "ok", "", DATA_INT, p->decode_ok,
-                "messages", "", DATA_INT, p->decode_messages,
-                "fails_other", "", DATA_INT, p->decode_fails[0],
-                "fails_length", "", DATA_INT, p->decode_fails[1],
-                "fails_early", "", DATA_INT, p->decode_fails[2],
-                "fails_mic", "", DATA_INT, p->decode_fails[3],
-                "fails_sanity", "", DATA_INT, p->decode_fails[4],
+                "device",       "", DATA_INT, r,
+                "name",         "", DATA_STRING, p->name,
+                "events",       "", DATA_INT, p->decode_events,
+                "ok",           "", DATA_INT, p->decode_ok,
+                "messages",     "", DATA_INT, p->decode_messages,
+                "fail_other",   "", DATA_INT, p->decode_fails[-DECODE_FAIL_OTHER],
+                "abort_length", "", DATA_INT, p->decode_fails[-DECODE_ABORT_LENGTH],
+                "abort_early",  "", DATA_INT, p->decode_fails[-DECODE_ABORT_EARLY],
+                "fail_mic",     "", DATA_INT, p->decode_fails[-DECODE_FAIL_MIC],
+                "fail_sanity",  "", DATA_INT, p->decode_fails[-DECODE_FAIL_SANITY],
                 NULL);
     }
 
     return data_make(
-            "enabled", "", DATA_INT, demod->r_dev_num,
-            "stats", "", DATA_ARRAY, data_array(i, DATA_DATA, dev_data),
+            "enabled",          "", DATA_INT, demod->r_dev_num,
+            "stats",            "", DATA_ARRAY, data_array(i, DATA_DATA, dev_data),
             NULL);
 }
 
