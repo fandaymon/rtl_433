@@ -36,10 +36,13 @@ static int honeywell_callback(bitbuffer_t *bitbuffer)
     int channel;
     int device_id;
     int event;
-    int state;
-    int heartbeat;
     uint16_t crc_calculated;
     uint16_t crc;
+    int state;
+    int heartbeat;
+    int alarm;
+    int tamper;
+    int battery_low;
 
     row = 0; // we expect a single row only. reduce collisions
     if (bitbuffer->num_rows != 1 || bitbuffer->bits_per_row[row] < 60)
@@ -67,18 +70,25 @@ static int honeywell_callback(bitbuffer_t *bitbuffer)
         return 0; // Not a valid packet
 
     event = b[3];
+    // decoded event bits
     state = (event & 0x80) >> 7;
+    alarm = (event & 0xb0) >> 4;
+    tamper = (event & 0x40) >> 6;
+    battery_low = (event & 0x08) >> 3;
     heartbeat = (event & 0x04) >> 2;
 
     local_time_str(0, time_str);
     data = data_make(
-            "time",     "", DATA_STRING, time_str,
-            "model",    "", DATA_STRING, "Honeywell Door/Window Sensor",
-            "id",       "", DATA_FORMAT, "%05x", DATA_INT, device_id,
-            "channel",  "", DATA_INT, channel,
-            "event",    "", DATA_FORMAT, "%02x", DATA_INT, event,
-            "state",    "", DATA_STRING, state ? "open" : "closed",
-            "heartbeat", "", DATA_STRING, heartbeat ? "yes" : "no",
+            "time",         "", DATA_STRING, time_str,
+            "model",        "", DATA_STRING, "Honeywell Door/Window Sensor",
+            "id",           "", DATA_FORMAT, "%05x", DATA_INT, device_id,
+            "channel",      "", DATA_INT, channel,
+            "event",        "", DATA_FORMAT, "%02x", DATA_INT, event,
+            "state",        "", DATA_STRING, state ? "open" : "closed",
+            "alarm",        "", DATA_INT, alarm,
+            "tamper",       "", DATA_INT, tamper,
+            "battery_low",  "", DATA_INT, battery_low,
+            "heartbeat",    "", DATA_STRING, heartbeat ? "yes" : "no",
             NULL);
 
     data_acquired_handler(data);
@@ -92,6 +102,9 @@ static char *output_fields[] = {
     "channel",
     "event",
     "state",
+    "alarm",
+    "tamper",
+    "battery_low",
     "heartbeat",
     NULL
 };
